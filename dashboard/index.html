@@ -3,12 +3,111 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Token Radar: pre-token protocols ranked by implied value</title>
+<meta name="color-scheme" content="dark">
+<title>Entry Radar — pre-token protocols ranked by implied value</title>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
-<a class="skip" href="#board">Skip to the board</a>
-<main id="board" tabindex="-1" aria-busy="true"></main>
+<header class="top">
+  <div class="brand">
+    <span class="sweep" aria-hidden="true"></span>
+    <div class="brand-text">
+      <h1>Entry Radar</h1>
+      <p class="tagline">Every protocol still waiting on a token, ranked by what that token would be worth if its record stays as it is.</p>
+    </div>
+  </div>
+  <div class="meta" id="meta"></div>
+</header>
+
+<section class="stats" id="stats" aria-label="Board facts"></section>
+
+<section class="filters" id="filters" aria-label="Filter the board">
+  <div class="tabs" role="tablist" aria-label="View">
+    <button type="button" id="tab-pre" class="tab" role="tab" aria-selected="true">Pre-token board</button>
+    <button type="button" id="tab-live" class="tab" role="tab" aria-selected="false">Live tokens</button>
+  </div>
+  <div class="field grow">
+    <label for="f-q">Search</label>
+    <input type="search" id="f-q" placeholder="Name, slug, category or chain" autocomplete="off">
+  </div>
+  <div class="field">
+    <label for="f-cat">Category</label>
+    <select id="f-cat"><option value="all">All categories</option></select>
+  </div>
+  <div class="field">
+    <label for="f-chain">Chain</label>
+    <select id="f-chain"><option value="all">All chains</option></select>
+  </div>
+  <div class="field">
+    <label for="f-tvl">Min TVL</label>
+    <select id="f-tvl">
+      <option value="0">Any TVL</option>
+      <option value="10000000">$10M+</option>
+      <option value="25000000">$25M+</option>
+      <option value="50000000">$50M+</option>
+      <option value="100000000">$100M+</option>
+      <option value="500000000">$500M+</option>
+      <option value="1000000000">$1B+</option>
+    </select>
+  </div>
+  <label class="check field">
+    <input type="checkbox" id="f-wl">
+    <span>Watchlist only</span>
+  </label>
+  <button type="button" class="ghost" id="f-clear">Reset</button>
+  <span class="count" id="count"></span>
+</section>
+
+<section class="panel" id="board-panel">
+  <div class="table-wrap">
+    <table id="table">
+      <thead>
+        <tr>
+          <th data-key="rank"><button type="button" class="th-sort">Rank</button></th>
+          <th data-key="name"><button type="button" class="th-sort">Protocol</button></th>
+          <th data-key="sector"><button type="button" class="th-sort">Sector</button></th>
+          <th>Chains</th>
+          <th data-key="tvl"><button type="button" class="th-sort">TVL</button></th>
+          <th data-key="growth"><button type="button" class="th-sort">7d</button></th>
+          <th data-key="age"><button type="button" class="th-sort">No-token age</button></th>
+          <th data-key="rank"><button type="button" class="th-sort">Implied value</button></th>
+          <th>Signal</th>
+          <th>List</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <div class="empty" id="empty" hidden>
+    <p><b>Nothing matches that filter.</b></p>
+    <p class="muted">Widen the TVL floor, clear the search, or pick another category.</p>
+    <button type="button" class="ghost" id="empty-clear">Reset filters</button>
+  </div>
+</section>
+
+<section class="panel" id="live-panel" hidden>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Protocol</th><th>Sector</th><th>Chains</th><th>TVL</th><th>7d</th><th>Market cap</th><th>Status</th></tr>
+      </thead>
+      <tbody id="live-rows"></tbody>
+    </table>
+  </div>
+  <p class="panel-note">These protocols already have a token on record, so the market prices them: their market cap is a fact, not a model. They are set aside from the ranking above, never mixed into it.</p>
+</section>
+
+<section class="panel model" id="model-panel">
+  <h2>How the radar scores</h2>
+  <p class="formula" id="formula"></p>
+  <div class="sectors" id="sectors"></div>
+  <p class="muted" id="model-note"></p>
+</section>
+
+<footer class="foot" id="foot"></footer>
+
+<dialog id="detail" class="detail" aria-labelledby="d-title"></dialog>
+
 <script src="../data.js"></script>
 <script src="app.js"></script>
 </body>

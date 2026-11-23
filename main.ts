@@ -1,6 +1,7 @@
-// Entry Radar build: reads the sealed snapshot, scores every pre-token protocol with lib/model.ts,
-// writes /output/board.json and the dashboard's data.js, copies dashboard/ and screenshots/ into the
-// output, and writes /output/dossier.json with make.fun's vendored buildDossier.
+// Entry Radar build: reads the sealed snapshot, fits the ridge value model and launch-odds model in
+// lib/model.ts over the snapshot's own traded anchors, writes /output/board.json and the dashboard's
+// data.js, copies dashboard/ and screenshots/ into the output, and writes /output/dossier.json with
+// make.fun's vendored buildDossier.
 //
 // Input order: --input <file|dir>, then $MAKEFUN_INPUT_DIR, then the mounted /input, then the copy
 // bundled at data/snapshot.json so the page builds standalone outside the grader.
@@ -80,9 +81,14 @@ writeFileSync(join(out, 'dossier.json'), buildDossier(out, { text_max_bytes: TEX
 
 const watched = board.filter((r) => r.on_watchlist).length;
 const top = board[0]!;
+const v = radar.fit.validation;
+const verdicts = board.reduce<Record<string, number>>((m, r) => ({ ...m, [r.verdict]: (m[r.verdict] ?? 0) + 1 }), {});
 const bytes = (p: string) => statSync(join(out, p)).size;
 process.stdout.write(
   `entry-radar: snapshot ${snapshot.as_of}, ${snapshot.protocols.length} protocols, ${snapshot.watchlist.length} watched, board ${board.length} rows (${watched} watchlist covered)\n` +
-    `entry-radar: rank 1 ${top.name} at $${Math.round(top.implied_value_usd / 1e6)}M implied from $${Math.round(top.tvl_usd / 1e6)}M TVL\n` +
+    `entry-radar: model ${radar.model_version} fitted on ${v.anchors_used} anchors (dropped ${v.anchors_dropped_nonpositive} non-positive, ${v.anchors_dropped_sub1m} sub-$1M, ${v.anchors_dropped_ratio60} mcap/TVL>60x)\n` +
+    `entry-radar: held-out validation: leave-one-out x${v.loo_median_ratio} over ${v.loo_folds} folds (p75 x${v.loo_p75_ratio}), walk-forward x${v.wf_median_ratio} (train ${v.wf_train} older, test ${v.wf_test} newer)\n` +
+    `entry-radar: verdicts ${JSON.stringify(verdicts)} at $${radar.farm_assumptions.hourly_usd}/h\n` +
+    `entry-radar: rank 1 ${top.name} at $${Math.round(top.implied_value_usd / 1e6)}M implied (odds ${(top.launch_odds * 100).toFixed(0)}%) from $${Math.round(top.tvl_usd / 1e6)}M TVL\n` +
     `entry-radar: wrote board.json (${bytes('board.json')}B), data.js (${bytes('data.js')}B), dashboard/ (${pages.length} files), screenshots/ (${shots.length}) and dossier.json (${bytes('dossier.json')}B) from ${inputFile}\n`,
 );

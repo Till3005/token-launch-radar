@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>Entry Radar — pre-token protocols ranked by implied value</title>
+<title>Entry Radar — pre-token protocols ranked by fitted implied value</title>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -13,18 +13,19 @@
     <span class="sweep" aria-hidden="true"></span>
     <div class="brand-text">
       <h1>Entry Radar</h1>
-      <p class="tagline">Every protocol still waiting on a token, ranked by what that token would be worth if its record stays as it is.</p>
+      <p class="tagline">Every protocol still waiting on a token, ranked by a value model fitted on this snapshot's own traded peers.</p>
     </div>
   </div>
   <div class="meta" id="meta"></div>
 </header>
 
-<section class="stats" id="stats" aria-label="Board facts"></section>
+<main class="wrap">
+<section class="stats" id="stats" aria-label="Board and model facts"></section>
 
 <section class="filters" id="filters" aria-label="Filter the board">
   <div class="tabs" role="tablist" aria-label="View">
     <button type="button" id="tab-pre" class="tab" role="tab" aria-selected="true">Pre-token board</button>
-    <button type="button" id="tab-live" class="tab" role="tab" aria-selected="false">Live tokens</button>
+    <button type="button" id="tab-live" class="tab" role="tab" aria-selected="false">Traded comps</button>
   </div>
   <div class="field grow">
     <label for="f-q">Search</label>
@@ -39,20 +40,34 @@
     <select id="f-chain"><option value="all">All chains</option></select>
   </div>
   <div class="field">
-    <label for="f-tvl">Min TVL</label>
-    <select id="f-tvl">
-      <option value="0">Any TVL</option>
-      <option value="10000000">$10M+</option>
-      <option value="25000000">$25M+</option>
-      <option value="50000000">$50M+</option>
-      <option value="100000000">$100M+</option>
-      <option value="500000000">$500M+</option>
-      <option value="1000000000">$1B+</option>
+    <label for="f-tvl-min">TVL from</label>
+    <select id="f-tvl-min">
+      <option value="0">Any</option>
+      <option value="10000000">$10M</option>
+      <option value="25000000">$25M</option>
+      <option value="50000000">$50M</option>
+      <option value="100000000">$100M</option>
+      <option value="500000000">$500M</option>
+      <option value="1000000000">$1B</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="f-tvl-max">TVL to</label>
+    <select id="f-tvl-max">
+      <option value="Infinity">Any</option>
+      <option value="50000000">$50M</option>
+      <option value="100000000">$100M</option>
+      <option value="200000000">$200M</option>
+      <option value="1000000000">$1B</option>
     </select>
   </div>
   <label class="check field">
     <input type="checkbox" id="f-wl">
     <span>Watchlist only</span>
+  </label>
+  <label class="check field">
+    <input type="checkbox" id="f-verdict">
+    <span>Farm-worthy</span>
   </label>
   <button type="button" class="ghost" id="f-clear">Reset</button>
   <span class="count" id="count"></span>
@@ -65,14 +80,14 @@
         <tr>
           <th data-key="rank"><button type="button" class="th-sort">Rank</button></th>
           <th data-key="name"><button type="button" class="th-sort">Protocol</button></th>
-          <th data-key="sector"><button type="button" class="th-sort">Sector</button></th>
+          <th data-key="cat"><button type="button" class="th-sort">Category</button></th>
           <th>Chains</th>
           <th data-key="tvl"><button type="button" class="th-sort">TVL</button></th>
           <th data-key="growth"><button type="button" class="th-sort">7d</button></th>
-          <th data-key="age"><button type="button" class="th-sort">No-token age</button></th>
-          <th data-key="rank"><button type="button" class="th-sort">Implied value</button></th>
-          <th>Signal</th>
-          <th>List</th>
+          <th data-key="age"><button type="button" class="th-sort">Token-less</button></th>
+          <th data-key="odds"><button type="button" class="th-sort">Odds</button></th>
+          <th data-key="implied"><button type="button" class="th-sort">Implied value</button></th>
+          <th data-key="net"><button type="button" class="th-sort">Farm net</button></th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
@@ -80,7 +95,7 @@
   </div>
   <div class="empty" id="empty" hidden>
     <p><b>Nothing matches that filter.</b></p>
-    <p class="muted">Widen the TVL floor, clear the search, or pick another category.</p>
+    <p class="muted">Widen the TVL range, clear the search, or pick another category.</p>
     <button type="button" class="ghost" id="empty-clear">Reset filters</button>
   </div>
 </section>
@@ -89,24 +104,44 @@
   <div class="table-wrap">
     <table>
       <thead>
-        <tr><th>Protocol</th><th>Sector</th><th>Chains</th><th>TVL</th><th>7d</th><th>Market cap</th><th>Status</th></tr>
+        <tr><th>Protocol</th><th>Category</th><th>Chains</th><th>TVL</th><th>7d</th><th>Market cap</th><th>Mcap / TVL</th><th>Status</th></tr>
       </thead>
       <tbody id="live-rows"></tbody>
     </table>
   </div>
-  <p class="panel-note">These protocols already have a token on record, so the market prices them: their market cap is a fact, not a model. They are set aside from the ranking above, never mixed into it.</p>
+  <p class="panel-note">These are the snapshot's traded protocols — the anchors the value model was fitted on (108 after dropping sub-$1M caps, non-positive caps and mcap/TVL above 60x). Their market cap is a fact the market prices; the fitted model explains its log from TVL, age, growth, chain count and sector. They sit apart from the ranking above, never mixed into it.</p>
 </section>
 
 <section class="panel model" id="model-panel">
   <h2>How the radar scores</h2>
-  <p class="formula" id="formula"></p>
-  <div class="sectors" id="sectors"></div>
+  <div class="model-grid">
+    <div class="model-box">
+      <h3>Value model — fitted, not assumed</h3>
+      <p class="formula" id="formula"></p>
+      <p class="muted" id="fit-note"></p>
+      <div class="coef-table" id="coefs"></div>
+    </div>
+    <div class="model-box">
+      <h3>Held-out validation — measured at build time</h3>
+      <div id="valid"></div>
+    </div>
+    <div class="model-box">
+      <h3>Launch odds — read off the snapshot's own cohort</h3>
+      <p class="formula small" id="odds-formula"></p>
+      <div class="odds-tables" id="odds-tables"></div>
+    </div>
+    <div class="model-box">
+      <h3>Farm verdicts — priced, not slogans</h3>
+      <div id="farm-model"></div>
+    </div>
+  </div>
   <p class="muted" id="model-note"></p>
 </section>
 
-<footer class="foot" id="foot"></footer>
+<section class="detail" id="detail" hidden aria-labelledby="d-title"></section>
+</main>
 
-<dialog id="detail" class="detail" aria-labelledby="d-title"></dialog>
+<footer class="foot" id="foot"></footer>
 
 <script src="../data.js"></script>
 <script src="app.js"></script>
